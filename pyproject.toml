@@ -1,0 +1,14 @@
+[project]
+name = "mb-search"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "hayato-n8810", email = "s276185@wakayama-u.ac.jp" }
+]
+requires-python = ">=3.13"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
