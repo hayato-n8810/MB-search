@@ -1,62 +1,114 @@
 # pattern_creator.pyで作成したパターンから CodeQLクエリを生成するモジュール
+
+# CodeQL JavaScript/TypeScript AST クラスに基づいたクエリ生成
+
+# CodeQLのAST クラスマッピング（公式ドキュメント準拠）
 NODE_TYPE_TO_QL_CLASS = {
     "NewExpression": "NewExpr",
-    "CallExpression": "MethodCall",
-}
-
-PATH_TO_QL_PREDICATE = {
-    "['callee', 'name']": ".getCallee().(Identifier).getName()",
-    "['callee', 'property', 'name']": ".getMethodName()",
+    "CallExpression": "CallExpr", 
+    "Literal": "Literal",
+    "Identifier": "Identifier",
+    "MemberExpression": "PropAccess",
+    "BinaryExpression": "BinaryExpr",
+    "UnaryExpression": "UnaryExpr",
+    "AssignmentExpression": "AssignExpr",
+    "UpdateExpression": "UpdateExpr",
+    "LogicalExpression": "LogicalBinaryExpr",
+    "ConditionalExpression": "ConditionalExpr",
+    "ArrayExpression": "ArrayExpr",
+    "ObjectExpression": "ObjectExpr",
+    "FunctionExpression": "FunctionExpr",
+    "ArrowFunctionExpression": "ArrowFunctionExpr"
 }
 
 def _translate_conditions_to_where_clauses(pattern_conditions: list, ql_variable: str) -> str:
+    """パターン条件をCodeQLのwhere句に変換"""
     where_clauses = []
+    
     for cond in pattern_conditions:
         cond_type = cond['type']
         
-        if cond_type == 'context_check' and cond['check'] == 'is_in_loop':
-            # CodeQLで正しく動作するループ検出ロジックを使用
-            where_clauses.append(f"exists(Loop loop | {ql_variable}.getContainer().getEnclosingStmt*() = loop.getBody().getAChildStmt*())")
-            continue
-
-        path_str = str(cond.get('path', []))
-        predicate = PATH_TO_QL_PREDICATE.get(path_str)
-        if not predicate: continue
-            
-        ql_expression = f"{ql_variable}{predicate}"
-        value = cond['value']
-
-        if cond_type == 'property_equals':
-            where_clauses.append(f'{ql_expression} = "{value}"')
+        # コンストラクタ呼び出しの条件
+        if cond_type == 'constructor_call':
+            constructor_name = cond['constructor_name']
+            where_clauses.append(f'{ql_variable}.getCallee().(Identifier).getName() = "{constructor_name}"')
         
-        elif cond_type == 'property_in':
-            in_clause = " or ".join([f'{ql_expression} = "{v}"' for v in value])
-            where_clauses.append(f"({in_clause})")
+        # メソッド呼び出しの条件  
+        elif cond_type == 'method_call':
+            method_name = cond['method_name']
+            if cond.get('object_name'):
+                object_name = cond['object_name']
+                where_clauses.append(f'{ql_variable}.getReceiver().(VarAccess).getName() = "{object_name}"')
+            where_clauses.append(f'{ql_variable}.getMethodName() = "{method_name}"')
+        
+        # 関数呼び出しの条件
+        elif cond_type == 'function_call':
+            function_name = cond['function_name']
+            where_clauses.append(f'{ql_variable}.getCallee().(Identifier).getName() = "{function_name}"')
+        
+        # リテラル値の条件
+        elif cond_type == 'literal_value':
+            value = cond['value']
+            value_type = cond['value_type']
+            
+            if value_type == 'str':
+                where_clauses.append(f'{ql_variable}.getValue() = "{value}"')
+            elif value_type in ['int', 'float']:
+                where_clauses.append(f'{ql_variable}.getValue() = "{value}"')
+            elif value_type == 'bool':
+                where_clauses.append(f'{ql_variable}.getValue() = "{str(value).lower()}"')
+        
+        # 識別子名の条件
+        elif cond_type == 'identifier_name':
+            name = cond['name']
+            where_clauses.append(f'{ql_variable}.getName() = "{name}"')
+        
+        # コンテキスト条件（修正版）
+        elif cond_type == 'in_loop':
+            # 正しい型互換性のあるループ検出
+            where_clauses.append(f'exists(LoopStmt loop | loop.getBody().getAChildStmt*() = {ql_variable}.getEnclosingStmt())')
+        
+        elif cond_type == 'in_function':
+            where_clauses.append(f'exists(Function func | func.getBody().getAChildStmt*() = {ql_variable}.getEnclosingStmt())')
+        
+        elif cond_type == 'in_conditional':
+            where_clauses.append(f'exists(IfStmt ifstmt | ifstmt.getAChildStmt*() = {ql_variable}.getEnclosingStmt())')
 
     return " and\n  ".join(where_clauses)
 
-def generate_query_from_pattern(pattern: dict) -> str:
-    """単一のパターン定義オブジェクトからCodeQLクエリ文字列を生成する"""
-    if not pattern: return "-- [ERROR] Invalid pattern provided."
+def generate_query_from_pattern(pattern: dict) -> str | None:
+    """パターンからCodeQLクエリを生成（CodeQL公式AST準拠）"""
+    if not pattern:
+        return None
 
     pattern_name = pattern.get('name', 'CustomGeneratedPattern')
     description = pattern.get('description', 'No description provided.')
     node_type = pattern.get('target_node_type')
     
     ql_class = NODE_TYPE_TO_QL_CLASS.get(node_type)
-    if not ql_class: return f"-- [ERROR] No QL class for node: {node_type}"
+    if not ql_class:
+        print(f"[WARNING] 未対応のノードタイプ: {node_type}")
+        return None
 
+    # 変数名の生成（例：NewExpr -> newExpr）
     ql_variable = ql_class[0].lower() + ql_class[1:]
+    
     where_clauses = _translate_conditions_to_where_clauses(pattern.get('conditions', []), ql_variable)
-    if not where_clauses: return f"-- [WARN] No translatable conditions for: {pattern_name}"
+    if not where_clauses:
+        print(f"[WARNING] 変換可能な条件がありません: {pattern_name}")
+        return None
 
+    # CodeQLクエリテンプレート（公式形式準拠）
     template = f"""/**
  * @name {pattern_name}
  * @description {description}
  * @kind problem
  * @problem.severity warning
- * @id js/performance/{pattern_name.lower()}
+ * @id js/performance/{pattern_name.lower().replace('_', '-')}
+ * @tags performance
+ *       maintainability
  */
+
 import javascript
 
 from {ql_class} {ql_variable}
@@ -65,3 +117,58 @@ where
 select {ql_variable}, "{description}"
 """
     return template
+
+# 特定のパターンに対する専用クエリ生成関数（修正版）
+def generate_constructor_in_loop_query(constructor_name: str) -> str:
+    """ループ内でのコンストラクタ呼び出しパターン専用クエリ"""
+    return f"""/**
+ * @name Constructor call in loop: {constructor_name}
+ * @description Detects {constructor_name} constructor calls inside loops which may cause performance issues
+ * @kind problem
+ * @problem.severity warning
+ * @id js/performance/constructor-in-loop-{constructor_name.lower()}
+ * @tags performance
+ */
+
+import javascript
+
+from NewExpr newExpr
+where
+  newExpr.getCallee().(Identifier).getName() = "{constructor_name}" and
+  exists(LoopStmt loop | loop.getBody().getAChildStmt*() = newExpr.getEnclosingStmt())
+select newExpr, "Avoid calling {constructor_name} constructor inside loops for better performance."
+"""
+
+def generate_method_call_query(method_name: str, object_type: str = None) -> str:
+    """メソッド呼び出しパターン専用クエリ"""
+    object_condition = f'callExpr.getReceiver().getType().hasQualifiedName("{object_type}") and' if object_type else ""
+    
+    return f"""/**
+ * @name Method call pattern: {method_name}
+ * @description Detects {method_name} method calls that may have performance implications
+ * @kind problem  
+ * @problem.severity warning
+ * @id js/performance/method-call-{method_name.lower()}
+ * @tags performance
+ */
+
+import javascript
+
+from CallExpr callExpr
+where
+  {object_condition}
+  callExpr.getMethodName() = "{method_name}"
+select callExpr, "Method call to {method_name} detected."
+"""
+
+# 追加：より堅牢なループ検出のための代替バージョン
+def _generate_robust_loop_detection(ql_variable: str) -> str:
+    """より堅牢なループ検出条件を生成"""
+    return f"""exists(LoopStmt loop | 
+    loop.getBody().getAChildStmt*() = {ql_variable}.getEnclosingStmt() or
+    {ql_variable}.getEnclosingStmt().getContainer*() = loop
+  )"""
+
+def _generate_alternative_loop_detection(ql_variable: str) -> str:
+    """instanceof を使った代替ループ検出"""
+    return f"{ql_variable}.getEnclosingStmt().getContainer*() instanceof LoopStmt"

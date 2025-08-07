@@ -27,37 +27,139 @@ def create_pattern_from_diff(id: int, slow_code: str, fast_code: str) -> dict | 
         "conditions": []
     }
     
-    # --- ヒューリスティックに基づく推論 ---
+    # CodeQLのAST構造に合わせた条件生成
     node_type = diff_node['type']
+    
     if node_type == 'NewExpression':
+        # NewExpr クラスに対応
         callee_name = ast_analyzer._get_property_by_path(diff_node, ['callee', 'name'])
         if callee_name:
             pattern['conditions'].append({
-                "type": "property_equals",
-                "path": ["callee", "name"],
-                "value": callee_name
+                "type": "constructor_call",
+                "constructor_name": callee_name,
+                "path": ["callee", "name"]
             })
-            pattern['name'] = f"pattern_{id}_{callee_name}"
+            pattern['name'] = f"pattern_{id}_{callee_name}_constructor"
 
     elif node_type == 'CallExpression':
-        method_name = ast_analyzer._get_property_by_path(diff_node, ['callee', 'property', 'name'])
-        if method_name:
-             pattern['conditions'].append({
-                "type": "property_equals",
-                "path": ["callee", "property", "name"],
-                "value": method_name
+        # CallExpr クラスに対応
+        # メソッド呼び出しの場合
+        if diff_node.get('callee', {}).get('type') == 'MemberExpression':
+            method_name = ast_analyzer._get_property_by_path(diff_node, ['callee', 'property', 'name'])
+            object_name = ast_analyzer._get_property_by_path(diff_node, ['callee', 'object', 'name'])
+            
+            if method_name:
+                pattern['conditions'].append({
+                    "type": "method_call",
+                    "method_name": method_name,
+                    "object_name": object_name,
+                    "path": ["callee", "property", "name"]
+                })
+                pattern['name'] = f"pattern_{id}_{method_name}_method"
+        
+        # 関数呼び出しの場合
+        else:
+            function_name = ast_analyzer._get_property_by_path(diff_node, ['callee', 'name'])
+            if function_name:
+                pattern['conditions'].append({
+                    "type": "function_call",
+                    "function_name": function_name,
+                    "path": ["callee", "name"]
+                })
+                pattern['name'] = f"pattern_{id}_{function_name}_function"
+
+    elif node_type == 'Literal':
+        # Literal クラスに対応
+        value = diff_node.get('value')
+        raw = diff_node.get('raw')
+        if value is not None:
+            pattern['conditions'].append({
+                "type": "literal_value",
+                "value": value,
+                "raw": raw,
+                "value_type": type(value).__name__
             })
-             pattern['name'] = f"pattern_{id}_{method_name}"
+            pattern['name'] = f"pattern_{id}_literal_{type(value).__name__}"
+
+    elif node_type == 'Identifier':
+        # Identifier クラスに対応
+        name = diff_node.get('name')
+        if name:
+            pattern['conditions'].append({
+                "type": "identifier_name",
+                "name": name
+            })
+            pattern['name'] = f"pattern_{id}_{name}_identifier"
     
-    # コンテキスト条件の追加
-    if ast_analyzer._is_in_loop_recursive(slow_ast, path_to_diff):
-        pattern['conditions'].append({
-            "type": "context_check",
-            "in_loop": "is_in_loop"
-        })
-        pattern['name'] += "InLoop"
+    # コンテキスト条件の追加（改良版）
+    context_conditions = _analyze_context(slow_ast, path_to_diff)
+    pattern['conditions'].extend(context_conditions)
+    
+    # 条件に基づいてパターン名を調整
+    for context in context_conditions:
+        if context['type'] == 'in_loop':
+            pattern['name'] += "_in_loop"
+        elif context['type'] == 'in_function':
+            pattern['name'] += "_in_function"
 
     if len(pattern['conditions']) == 0:
         return None
 
     return pattern
+
+def _analyze_context(ast_root: dict, path_to_diff: list) -> list:
+    """差分ノードのコンテキストを分析してCodeQLクエリ用の条件を生成"""
+    conditions = []
+    
+    # ループ内かどうかの判定（改良版）
+    if ast_analyzer._is_in_loop_recursive(ast_root, path_to_diff):
+        conditions.append({
+            "type": "in_loop",
+            "check": "is_in_loop"
+        })
+    
+    # 関数内かどうかの判定
+    if _is_in_function(ast_root, path_to_diff):
+        conditions.append({
+            "type": "in_function",
+            "check": "is_in_function"
+        })
+    
+    # 条件分岐内かどうかの判定
+    if _is_in_conditional(ast_root, path_to_diff):
+        conditions.append({
+            "type": "in_conditional",
+            "check": "is_in_conditional"
+        })
+    
+    return conditions
+
+def _is_in_function(ast_root: dict, path: list) -> bool:
+    """指定されたパスが関数内にあるかチェック"""
+    current_node = ast_root
+    for i in range(len(path)):
+        parent_path = path[:i+1]
+        try:
+            parent_node = ast_analyzer._get_property_by_path(ast_root, parent_path[:-1]) if len(parent_path) > 1 else ast_root
+            if isinstance(parent_node, dict):
+                node_type = parent_node.get('type')
+                if node_type in ['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression']:
+                    return True
+        except (KeyError, TypeError, IndexError):
+            continue
+    return False
+
+def _is_in_conditional(ast_root: dict, path: list) -> bool:
+    """指定されたパスが条件分岐内にあるかチェック"""
+    current_node = ast_root
+    for i in range(len(path)):
+        parent_path = path[:i+1]
+        try:
+            parent_node = ast_analyzer._get_property_by_path(ast_root, parent_path[:-1]) if len(parent_path) > 1 else ast_root
+            if isinstance(parent_node, dict):
+                node_type = parent_node.get('type')
+                if node_type in ['IfStatement', 'ConditionalExpression', 'SwitchStatement']:
+                    return True
+        except (KeyError, TypeError, IndexError):
+            continue
+    return False
