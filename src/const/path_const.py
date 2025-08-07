@@ -9,3 +9,4 @@ JSCODE = ROOT / "js_code"
 QUERIES = ROOT / "codeql_queries_js"
 
 SEARCH = ROOT / "src" / "mb_search"
+PATTERN = ROOT / "src" / "pattern"
