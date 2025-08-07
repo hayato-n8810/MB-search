@@ -116,7 +116,7 @@ def save_query_to_file(codeql_query: str, pattern_name: str):
 
 def run_pipeline(slow_code: str, fast_code: str):
     """
-    単一の実装対に対して、パターン生成からクエリ生成までのパイプラインを実行する
+    実装対に対して、パターン生成からクエリ生成までのパイプラインを実行する
     """
     print("="*50)
     print("Target Code Pair:")
