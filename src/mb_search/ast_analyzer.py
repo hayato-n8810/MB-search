@@ -71,14 +71,21 @@ def _is_in_loop_recursive(ast_root: dict, path: list) -> bool:
     """指定されたパスの祖先にループ構造があるか再帰的に判定する"""
     if not path:
         return False
-        
-    parent_path = path[:-1]
-    current_node = _get_property_by_path(ast_root, parent_path)
     
-    if current_node and isinstance(current_node, dict) and current_node.get('type') in ['ForStatement', 'WhileStatement', 'DoWhileStatement', 'ForInStatement', 'ForOfStatement']:
-        return True
-        
-    return _is_in_loop_recursive(ast_root, parent_path)
+    # 現在のノードから親ノードを辿って確認
+    current_node = ast_root
+    for i in range(len(path)):
+        parent_path = path[:i+1]
+        try:
+            parent_node = _get_property_by_path(ast_root, parent_path[:-1]) if len(parent_path) > 1 else ast_root
+            if isinstance(parent_node, dict):
+                node_type = parent_node.get('type')
+                if node_type in ['ForStatement', 'WhileStatement', 'DoWhileStatement', 'ForInStatement', 'ForOfStatement']:
+                    return True
+        except (KeyError, TypeError, IndexError):
+            continue
+    
+    return False
 
 def _get_property_by_path(node: dict, path: list):
     """ASTノードからパスでプロパティを取得するヘルパー関数"""

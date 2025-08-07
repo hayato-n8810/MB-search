@@ -7,7 +7,7 @@ import query_generator
 from mb_search import path_const
 
 
-def create_diff_pattern(slow_code: str, fast_code: str):
+def create_diff_pattern(id: int, slow_code: str, fast_code: str):
     """コードの差分からパターンを生成する
 
     Args:
@@ -18,7 +18,7 @@ def create_diff_pattern(slow_code: str, fast_code: str):
         ./pattern/diff_pattern.json: 生成されたパターンJSONファイル
     """
     # コードの差分からパターンを自動生成
-    created_pattern = pattern_creator.create_pattern_from_diff(slow_code, fast_code)
+    created_pattern = pattern_creator.create_pattern_from_diff(id, slow_code, fast_code)
 
     # 生成されたパターンをdiff_pattern.jsonファイルに保存
     pattern_file_path = path_const.PATTERN / "diff_pattern.json"
@@ -127,7 +127,7 @@ def run_pipeline(slow_code: str, fast_code: str):
     print("="*50)
 
     # ステップ1: コードの差分からパターンを生成
-    create_diff_pattern(slow_code, fast_code)
+    create_diff_pattern(000, slow_code, fast_code)
 
     # ステップ2: 生成されたパターンからCodeQLクエリを自動生成し保存
     generate_query()

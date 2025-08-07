@@ -1,8 +1,17 @@
 # MBのAST差分からアンチパターンの検出ルールをヒューリスティックで作成する
 import ast_analyzer
 
-def create_pattern_from_diff(slow_code: str, fast_code: str) -> dict | None:
-    """実装対の差分から、アンチパターンの定義を自動生成する"""
+def create_pattern_from_diff(id: int, slow_code: str, fast_code: str) -> dict | None:
+    """実装対の差分から、アンチパターンの定義を自動生成する
+
+    Args:
+        id (int): 実装対のID
+        slow_code (str): 差分のパターンになる方
+        fast_code (str): 差分のパターンにならない方
+
+    Returns:
+        dict | None: 生成されたパターン（差分がない場合はNone）
+    """
     slow_ast = ast_analyzer.generate_ast(slow_code, "slow_temp.js")
     fast_ast = ast_analyzer.generate_ast(fast_code, "fast_temp.js")
 
@@ -28,7 +37,7 @@ def create_pattern_from_diff(slow_code: str, fast_code: str) -> dict | None:
                 "path": ["callee", "name"],
                 "value": callee_name
             })
-            pattern['name'] = f"UnnecessaryConstructor_{callee_name}"
+            pattern['name'] = f"pattern_{id}_{callee_name}"
 
     elif node_type == 'CallExpression':
         method_name = ast_analyzer._get_property_by_path(diff_node, ['callee', 'property', 'name'])
@@ -38,13 +47,13 @@ def create_pattern_from_diff(slow_code: str, fast_code: str) -> dict | None:
                 "path": ["callee", "property", "name"],
                 "value": method_name
             })
-             pattern['name'] = f"SuspiciousMethodCall_{method_name}"
+             pattern['name'] = f"pattern_{id}_{method_name}"
     
     # コンテキスト条件の追加
     if ast_analyzer._is_in_loop_recursive(slow_ast, path_to_diff):
         pattern['conditions'].append({
             "type": "context_check",
-            "check": "is_in_loop"
+            "in_loop": "is_in_loop"
         })
         pattern['name'] += "InLoop"
 
