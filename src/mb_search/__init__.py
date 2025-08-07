@@ -1,2 +1,1 @@
-def hello() -> str:
-    return "Hello from mb-search!"
+from const import path_const

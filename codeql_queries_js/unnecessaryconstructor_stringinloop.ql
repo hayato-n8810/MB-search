@@ -10,5 +10,5 @@ import javascript
 from NewExpr newExpr
 where
   newExpr.getCallee().(Identifier).getName() = "String" and
-  exists(Loop loop | loop.getBody().getAChildStmt*() = newExpr.getEnclosingStmt())
-select newExpr, "Unnecessary String constructor call in loop detected."
+  exists(Loop loop | newExpr.getContainer().getEnclosingStmt*() = loop.getBody().getAChildStmt*())
+select newExpr, "Automatically generated pattern from code diff."

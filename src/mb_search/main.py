@@ -4,15 +4,15 @@ import os
 import pattern_creator
 import query_generator
 
+from mb_search import path_const
+
 def save_query_to_file(codeql_query: str, pattern_name: str):
     """
     生成されたCodeQLクエリを.qlファイルとして保存する
     """
     # codeql-queries-jsディレクトリのパスを取得
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.join(current_dir, "..", "..")
-    codeql_dir = os.path.join(project_root, "codeql-queries-js")
-    
+    codeql_dir = path_const.QUERIES
+
     # ファイル名を生成（pattern_nameを小文字に変換し、.qlを付加）
     filename = f"{pattern_name.lower()}.ql"
     filepath = os.path.join(codeql_dir, filename)

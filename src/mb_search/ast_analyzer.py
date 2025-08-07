@@ -4,14 +4,16 @@ import subprocess
 import os
 from functools import reduce
 
+from mb_search import path_const
+
 def generate_ast(code_snippet: str, filename="temp_code.js") -> dict:
     """与えられたコードスニペットからAST(JSON)を生成する"""
     with open(filename, "w", encoding="utf-8") as f:
         f.write(code_snippet)
     
     # プロジェクトルートからの相対パスを使用
-    ast_parser_path = os.path.join(os.path.dirname(__file__), "..", "..", "js_code", "ast_parser.js")
-    
+    ast_parser_path = path_const.JSCODE / "ast_parser.js"
+
     result = subprocess.run(
         ["node", ast_parser_path, filename],
         capture_output=True,
