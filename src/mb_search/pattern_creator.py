@@ -29,6 +29,13 @@ def create_pattern_from_diff(id: int, slow_code: str, fast_code: str) -> dict | 
     
     # CodeQLのAST構造に合わせた条件生成
     node_type = diff_node['type']
+
+    if node_type == 'ExpressionStatement' and 'expression' in diff_node:
+        # ラッパーノードの場合は、中の式を解析対象にする
+        diff_node = diff_node['expression']
+        path_to_diff.append('expression')
+        node_type = diff_node['type']
+        pattern['target_node_type'] = node_type
     
     if node_type == 'NewExpression':
         # NewExpr クラスに対応

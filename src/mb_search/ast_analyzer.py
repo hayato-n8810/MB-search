@@ -30,7 +30,7 @@ def generate_ast(code_snippet: str, filename="temp_code.js") -> dict:
     # print(f"AST debug file: {debug_file}")
     # with open(debug_file, "w", encoding="utf-8") as f:
     #     json.dump(json.loads(result.stdout), f, ensure_ascii=False, indent=2)
-    
+
     return json.loads(result.stdout)
 
 def find_structural_difference(node1: dict, node2: dict) -> tuple[dict | None, list]:
@@ -41,29 +41,42 @@ def find_structural_difference(node1: dict, node2: dict) -> tuple[dict | None, l
     if node1.get('type') != node2.get('type'):
         return node1, []
 
-    for key in node1:
-        if key not in node2 or key == 'loc':
+    # 'loc'キーを除いたすべてのキーを比較対象とする
+    keys = set(node1.keys()) | set(node2.keys())
+    keys.discard('loc')
+
+    for key in sorted(list(keys)): # 順序を固定して再現性を担保
+        
+        # 片方のノードにしかキーが存在しない場合は差分とみなす
+        if key not in node2:
+            return node1, [key]
+        if key not in node1:
+            # fast_code側にのみ存在するノードは差分として扱わない
             continue
 
         path_to_diff = [key]
+        val1 = node1[key]
+        val2 = node2[key]
         
-        if isinstance(node1[key], list) and isinstance(node2[key], list):
-            if len(node1[key]) != len(node2[key]):
-                if len(node1[key]) > 0 and len(node2[key]) > 0:
-                     diff_node, child_path = find_structural_difference(node1[key][0], node2[key][0])
-                     if diff_node:
-                         return diff_node, path_to_diff + [0] + child_path
-                continue
-
-            for i, (child1, child2) in enumerate(zip(node1[key], node2[key])):
+        if isinstance(val1, list) and isinstance(val2, list):
+            # 共通の長さの部分を比較
+            for i, (child1, child2) in enumerate(zip(val1, val2)):
                 diff_node, child_path = find_structural_difference(child1, child2)
                 if diff_node:
                     return diff_node, path_to_diff + [i] + child_path
+            
+            # リストの長さが異なる場合、slow_code側（node1）に余分な要素があればそれを差分とする
+            if len(val1) > len(val2):
+                return val1[len(val2)], path_to_diff + [len(val2)]
 
-        elif isinstance(node1[key], dict) and isinstance(node2[key], dict):
-            diff_node, child_path = find_structural_difference(node1[key], node2[key])
+        elif isinstance(val1, dict) and isinstance(val2, dict):
+            diff_node, child_path = find_structural_difference(val1, val2)
             if diff_node:
                 return diff_node, path_to_diff + child_path
+        
+        # プリミティブな値が異なる場合は差分とする
+        elif not isinstance(val1, (dict, list)) and val1 != val2:
+            return node1, []
 
     return None, []
 
@@ -115,11 +128,16 @@ def _get_property_by_path(node: dict, path: list):
 
 #     slow2 = """
 #     var VAR_1 = [];
-#     for (var VAR_2 = 0; VAR_2 < 5000; VAR_2++) VAR_1 = VAR_1.concat([\"1\", \"2\"]);
+#     VAR_1[1000000] = 10;
+#     VAR_1.forEach(function () {}, VAR_1);
 #     """
 #     fast2 = """
 #     var VAR_1 = [];
-#     for (var VAR_2 = 0; VAR_2 < 5000; VAR_2++) VAR_1.push(\"1\", \"2\");
+#     VAR_1[1000000] = 10;
+#     var VAR_2 = 0;
+#     for (var VAR_3 = 0; VAR_3 < VAR_1.length; VAR_3++) {
+#         VAR_2++;
+#     }
 #     """
 
 #     ast1 = generate_ast(slow2)

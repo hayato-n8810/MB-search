@@ -15,6 +15,7 @@ def create_diff_pattern(id: int, slow_code: str, fast_code: str):
         fast_code (str): MBの実装（速いコード）
 
     Returns:
+        dict: 生成されたパターン(標準出力用)
         ./pattern/diff_pattern.json: 生成されたパターンJSONファイル
     """
     # コードの差分からパターンを自動生成
@@ -48,6 +49,8 @@ def create_diff_pattern(id: int, slow_code: str, fast_code: str):
     if not created_pattern:
         print("\n--> RESULT: パターンが生成されませんでした")
         return
+    
+    return created_pattern
 
 
 def generate_query():
@@ -145,10 +148,22 @@ if __name__ == "__main__":
     for (var i = 0; i < 100; i++) {
         var s = "hello";
     }"""
-    run_pipeline(slow1, fast1)
+    # run_pipeline(slow1, fast1)
     
-    # --- ケース2：Array.prototype.map の利用（仮） ---
-    # このパターンは現在のヒューリスティックではうまく扱えない可能性がある
-    slow2 = "var new_array = old_array.map(x => x+1);"
-    fast2 = "for (var x of old_array) { new_array.push(x+1); }"
-    # run_pipeline(slow2, fast2) # さらなる拡張が必要な例
+    # --- ケース2---
+    slow2 = """
+    var VAR_1 = [];
+    VAR_1[1000000] = 10;
+    VAR_1.forEach(function () {}, VAR_1);
+    """
+    fast2 = """
+    var VAR_1 = [];
+    VAR_1[1000000] = 10;
+    var VAR_2 = 0;
+    for (var VAR_3 = 0; VAR_3 < VAR_1.length; VAR_3++) {
+        VAR_2++;
+    }
+    """
+    run_pipeline(slow2, fast2) # さらなる拡張が必要な例
+
+    #create_diff_pattern(000, slow1, fast1)

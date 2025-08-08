@@ -36,15 +36,19 @@ def _translate_conditions_to_where_clauses(pattern_conditions: list, ql_variable
         # メソッド呼び出しの条件  
         elif cond_type == 'method_call':
             method_name = cond['method_name']
+            # object_nameが指定されていて、かつ'VAR_'で始まらない場合にのみオブジェクト名の条件を追加
             if cond.get('object_name'):
                 object_name = cond['object_name']
-                where_clauses.append(f'{ql_variable}.getReceiver().(VarAccess).getName() = "{object_name}"')
+                if not object_name.startswith('VAR_'):
+                    where_clauses.append(f'{ql_variable}.getReceiver().(VarAccess).getName() = "{object_name}"')
             where_clauses.append(f'{ql_variable}.getMethodName() = "{method_name}"')
         
         # 関数呼び出しの条件
         elif cond_type == 'function_call':
             function_name = cond['function_name']
-            where_clauses.append(f'{ql_variable}.getCallee().(Identifier).getName() = "{function_name}"')
+            # function_nameが'FUNCTION_'で始まらない場合にのみ関数名の条件を追加
+            if not function_name.startswith('FUNCTION_'):
+                where_clauses.append(f'{ql_variable}.getCallee().(Identifier).getName() = "{function_name}"')
         
         # リテラル値の条件
         elif cond_type == 'literal_value':
@@ -61,7 +65,9 @@ def _translate_conditions_to_where_clauses(pattern_conditions: list, ql_variable
         # 識別子名の条件
         elif cond_type == 'identifier_name':
             name = cond['name']
-            where_clauses.append(f'{ql_variable}.getName() = "{name}"')
+            # nameが'VAR_'で始まらない場合にのみ識別子名の条件を追加
+            if not name.startswith('VAR_'):
+                where_clauses.append(f'{ql_variable}.getName() = "{name}"')
         
         # コンテキスト条件（修正版）
         elif cond_type == 'in_loop':
