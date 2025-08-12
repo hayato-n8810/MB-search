@@ -20,6 +20,13 @@ def create_pattern_from_diff(id: int, slow_code: str, fast_code: str) -> dict | 
     if not diff_node:
         return None
 
+    # AssignmentExpressionの場合、右辺のCallExpressionを検出対象にする
+    if diff_node.get('type') == 'AssignmentExpression' and 'right' in diff_node:
+        right_expr = diff_node['right']
+        if right_expr.get('type') == 'CallExpression':
+            diff_node = right_expr
+            path_to_diff.append('right')
+
     pattern = {
         "name": "GeneratedPattern",
         "description": "Automatically generated pattern from code diff.",

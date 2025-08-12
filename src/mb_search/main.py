@@ -164,6 +164,17 @@ if __name__ == "__main__":
         VAR_2++;
     }
     """
-    run_pipeline(slow2, fast2) # さらなる拡張が必要な例
+    # run_pipeline(slow2, fast2)
+
+    # --- ケース3---
+    slow3 = """
+    var VAR_1 = [];
+    for (var VAR_2 = 0; VAR_2 < 5000; VAR_2++) VAR_1 = VAR_1.concat(["1", "2"]);
+    """
+    fast3 = """
+    var VAR_1 = [];
+    for (var VAR_2 = 0; VAR_2 < 5000; VAR_2++) VAR_1.push("1", "2");
+    """
+    run_pipeline(slow3, fast3)
 
     #create_diff_pattern(000, slow1, fast1)

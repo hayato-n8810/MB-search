@@ -94,9 +94,13 @@ def generate_query_from_pattern(pattern: dict) -> str | None:
     node_type = pattern.get('target_node_type')
     conditions = pattern.get('conditions', [])
     
-    # メソッド呼び出しパターンの特別処理
+    # メソッド呼び出しパターンの特別処理を優先
     method_conditions = [c for c in conditions if c['type'] == 'method_call']
-    if method_conditions:
+    if method_conditions and node_type == 'CallExpression':
+        return _generate_method_call_specific_query(pattern)
+    
+    # AssignmentExpressionの場合でもメソッド呼び出しがあれば特別処理
+    if node_type == 'AssignmentExpression' and method_conditions:
         return _generate_method_call_specific_query(pattern)
     
     ql_class = NODE_TYPE_TO_QL_CLASS.get(node_type)
@@ -149,7 +153,7 @@ def _generate_method_call_specific_query(pattern: dict) -> str:
     # where句の構築
     where_clauses = []
     
-    # メソッド呼び出しの基本条件
+    # メソッド呼び出しの基本条件（すべてのメソッドで共通）
     where_clauses.append("callExpr.getCallee() instanceof PropAccess")
     where_clauses.append(f'callExpr.getCallee().(PropAccess).getPropertyName() = "{method_name}"')
     
@@ -157,7 +161,7 @@ def _generate_method_call_specific_query(pattern: dict) -> str:
     if object_name and not object_name.startswith('VAR_'):
         where_clauses.append(f'callExpr.getCallee().(PropAccess).getBase().(VarAccess).getName() = "{object_name}"')
     
-    # その他の条件を追加
+    # コンテキスト条件を追加
     for cond in conditions:
         if cond['type'] == 'in_loop':
             where_clauses.append('exists(LoopStmt loop | loop.getBody().getAChildStmt*() = callExpr.getEnclosingStmt())')

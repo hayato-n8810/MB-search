@@ -117,31 +117,17 @@ def _get_property_by_path(node: dict, path: list):
 
 # if __name__ == "__main__":
 #     # テスト用のコードスニペット
-#     code1 = """
-#     for (var i = 0; i < 100; i++) {
-#         var s = new String("hello");
-#     }"""
-#     code2 = """
-#     for (var i = 0; i < 100; i++) {
-#         var s = "hello";
-#     }"""
-
-#     slow2 = """
+#     slow = """
 #     var VAR_1 = [];
-#     VAR_1[1000000] = 10;
-#     VAR_1.forEach(function () {}, VAR_1);
+#     for (var VAR_2 = 0; VAR_2 < 5000; VAR_2++) VAR_1 = VAR_1.concat(["1", "2"]);
 #     """
-#     fast2 = """
+#     fast = """
 #     var VAR_1 = [];
-#     VAR_1[1000000] = 10;
-#     var VAR_2 = 0;
-#     for (var VAR_3 = 0; VAR_3 < VAR_1.length; VAR_3++) {
-#         VAR_2++;
-#     }
+#     for (var VAR_2 = 0; VAR_2 < 5000; VAR_2++) VAR_1.push("1", "2");
 #     """
 
-#     ast1 = generate_ast(slow2)
-#     ast2 = generate_ast(fast2)
+#     ast1 = generate_ast(slow)
+#     ast2 = generate_ast(fast)
     
 #     diff_node, path_to_diff = find_structural_difference(ast1, ast2)
     
@@ -158,4 +144,4 @@ def _get_property_by_path(node: dict, path: list):
 #         print("\n" + "-" * 20 + "\n")
 #         print("Path to difference:", path_to_diff)
 #     else:
-#         print("No structural difference found.")
+        print("No structural difference found.")
