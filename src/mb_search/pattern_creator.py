@@ -50,7 +50,7 @@ def create_pattern_from_diff(id: int, slow_code: str, fast_code: str) -> dict | 
 
     elif node_type == 'CallExpression':
         # CallExpr クラスに対応
-        # メソッド呼び出しの場合
+        # メソッド呼び出しの場合（variable.method()）
         if diff_node.get('callee', {}).get('type') == 'MemberExpression':
             method_name = ast_analyzer._get_property_by_path(diff_node, ['callee', 'property', 'name'])
             object_name = ast_analyzer._get_property_by_path(diff_node, ['callee', 'object', 'name'])
@@ -63,6 +63,12 @@ def create_pattern_from_diff(id: int, slow_code: str, fast_code: str) -> dict | 
                     "path": ["callee", "property", "name"]
                 })
                 pattern['name'] = f"pattern_{id}_{method_name}_method"
+                
+                # 配列メソッドの特別な説明を追加
+                if method_name in ['forEach', 'push', 'concat', 'splice', 'slice', 'map', 'filter', 'reduce']:
+                    pattern['description'] = f"Detects {method_name} method calls that may have performance implications for arrays."
+                else:
+                    pattern['description'] = f"Detects {method_name} method calls that may have performance implications."
         
         # 関数呼び出しの場合
         else:

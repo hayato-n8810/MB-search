@@ -33,15 +33,18 @@ def _translate_conditions_to_where_clauses(pattern_conditions: list, ql_variable
             constructor_name = cond['constructor_name']
             where_clauses.append(f'{ql_variable}.getCallee().(Identifier).getName() = "{constructor_name}"')
         
-        # メソッド呼び出しの条件  
+        # メソッド呼び出しの条件（CallExpr向け - プロパティアクセス）
         elif cond_type == 'method_call':
             method_name = cond['method_name']
-            # object_nameが指定されていて、かつ'VAR_'で始まらない場合にのみオブジェクト名の条件を追加
-            if cond.get('object_name'):
-                object_name = cond['object_name']
-                if not object_name.startswith('VAR_'):
-                    where_clauses.append(f'{ql_variable}.getReceiver().(VarAccess).getName() = "{object_name}"')
-            where_clauses.append(f'{ql_variable}.getMethodName() = "{method_name}"')
+            object_name = cond.get('object_name', '')
+            
+            # CallExprの場合：variable.method() パターン
+            where_clauses.append(f'{ql_variable}.getCallee() instanceof PropAccess')
+            where_clauses.append(f'{ql_variable}.getCallee().(PropAccess).getPropertyName() = "{method_name}"')
+            
+            # オブジェクト名の条件（VAR_で始まらない場合のみ）
+            if object_name and not object_name.startswith('VAR_'):
+                where_clauses.append(f'{ql_variable}.getCallee().(PropAccess).getBase().(VarAccess).getName() = "{object_name}"')
         
         # 関数呼び出しの条件
         elif cond_type == 'function_call':
@@ -69,9 +72,8 @@ def _translate_conditions_to_where_clauses(pattern_conditions: list, ql_variable
             if not name.startswith('VAR_'):
                 where_clauses.append(f'{ql_variable}.getName() = "{name}"')
         
-        # コンテキスト条件（修正版）
+        # コンテキスト条件
         elif cond_type == 'in_loop':
-            # 正しい型互換性のあるループ検出
             where_clauses.append(f'exists(LoopStmt loop | loop.getBody().getAChildStmt*() = {ql_variable}.getEnclosingStmt())')
         
         elif cond_type == 'in_function':
@@ -83,28 +85,34 @@ def _translate_conditions_to_where_clauses(pattern_conditions: list, ql_variable
     return " and\n  ".join(where_clauses)
 
 def generate_query_from_pattern(pattern: dict) -> str | None:
-    """パターンからCodeQLクエリを生成（CodeQL公式AST準拠）"""
+    """パターンからCodeQLクエリを生成"""
     if not pattern:
         return None
 
     pattern_name = pattern.get('name', 'CustomGeneratedPattern')
     description = pattern.get('description', 'No description provided.')
     node_type = pattern.get('target_node_type')
+    conditions = pattern.get('conditions', [])
+    
+    # メソッド呼び出しパターンの特別処理
+    method_conditions = [c for c in conditions if c['type'] == 'method_call']
+    if method_conditions:
+        return _generate_method_call_specific_query(pattern)
     
     ql_class = NODE_TYPE_TO_QL_CLASS.get(node_type)
     if not ql_class:
         print(f"[WARNING] 未対応のノードタイプ: {node_type}")
         return None
 
-    # 変数名の生成（例：NewExpr -> newExpr）
+    # 変数名の生成
     ql_variable = ql_class[0].lower() + ql_class[1:]
     
-    where_clauses = _translate_conditions_to_where_clauses(pattern.get('conditions', []), ql_variable)
+    where_clauses = _translate_conditions_to_where_clauses(conditions, ql_variable)
     if not where_clauses:
         print(f"[WARNING] 変換可能な条件がありません: {pattern_name}")
         return None
 
-    # CodeQLクエリテンプレート（公式形式準拠）
+    # CodeQLクエリテンプレート
     template = f"""/**
  * @name {pattern_name}
  * @description {description}
@@ -124,30 +132,68 @@ select {ql_variable}, "{description}"
 """
     return template
 
-# 特定のパターンに対する専用クエリ生成関数（修正版）
-def generate_constructor_in_loop_query(constructor_name: str) -> str:
-    """ループ内でのコンストラクタ呼び出しパターン専用クエリ"""
-    return f"""/**
- * @name Constructor call in loop: {constructor_name}
- * @description Detects {constructor_name} constructor calls inside loops which may cause performance issues
+def _generate_method_call_specific_query(pattern: dict) -> str:
+    """メソッド呼び出し専用のクエリ生成（CallExpr使用）"""
+    pattern_name = pattern.get('name', 'MethodCallPattern')
+    description = pattern.get('description', 'Method call pattern detected.')
+    conditions = pattern.get('conditions', [])
+    
+    # メソッド呼び出し条件を抽出
+    method_cond = next((c for c in conditions if c['type'] == 'method_call'), None)
+    if not method_cond:
+        return None
+    
+    method_name = method_cond['method_name']
+    object_name = method_cond.get('object_name', '')
+    
+    # where句の構築
+    where_clauses = []
+    
+    # メソッド呼び出しの基本条件
+    where_clauses.append("callExpr.getCallee() instanceof PropAccess")
+    where_clauses.append(f'callExpr.getCallee().(PropAccess).getPropertyName() = "{method_name}"')
+    
+    # オブジェクト名の条件（VAR_で始まらない場合のみ）
+    if object_name and not object_name.startswith('VAR_'):
+        where_clauses.append(f'callExpr.getCallee().(PropAccess).getBase().(VarAccess).getName() = "{object_name}"')
+    
+    # その他の条件を追加
+    for cond in conditions:
+        if cond['type'] == 'in_loop':
+            where_clauses.append('exists(LoopStmt loop | loop.getBody().getAChildStmt*() = callExpr.getEnclosingStmt())')
+        elif cond['type'] == 'in_function':
+            where_clauses.append('exists(Function func | func.getBody().getAChildStmt*() = callExpr.getEnclosingStmt())')
+        elif cond['type'] == 'in_conditional':
+            where_clauses.append('exists(IfStmt ifstmt | ifstmt.getAChildStmt*() = callExpr.getEnclosingStmt())')
+    
+    where_clause_str = " and\n  ".join(where_clauses)
+    
+    template = f"""/**
+ * @name {pattern_name}
+ * @description {description}
  * @kind problem
  * @problem.severity warning
- * @id js/performance/constructor-in-loop-{constructor_name.lower()}
+ * @id js/performance/{pattern_name.lower().replace('_', '-')}
  * @tags performance
+ *       maintainability
  */
 
 import javascript
 
-from NewExpr newExpr
+from CallExpr callExpr
 where
-  newExpr.getCallee().(Identifier).getName() = "{constructor_name}" and
-  exists(LoopStmt loop | loop.getBody().getAChildStmt*() = newExpr.getEnclosingStmt())
-select newExpr, "Avoid calling {constructor_name} constructor inside loops for better performance."
+  {where_clause_str}
+select callExpr, "{description}"
 """
+    
+    return template
 
 def generate_method_call_query(method_name: str, object_type: str = None) -> str:
     """メソッド呼び出しパターン専用クエリ"""
-    object_condition = f'callExpr.getReceiver().getType().hasQualifiedName("{object_type}") and' if object_type else ""
+    
+    object_condition = ""
+    if object_type:
+        object_condition = f'callExpr.getCallee().(PropAccess).getBase().getType().hasQualifiedName("{object_type}") and'
     
     return f"""/**
  * @name Method call pattern: {method_name}
@@ -162,9 +208,37 @@ import javascript
 
 from CallExpr callExpr
 where
+  callExpr.getCallee() instanceof PropAccess and
   {object_condition}
-  callExpr.getMethodName() = "{method_name}"
+  callExpr.getCallee().(PropAccess).getPropertyName() = "{method_name}"
 select callExpr, "Method call to {method_name} detected."
+"""
+
+# 配列メソッド専用クエリ生成
+def generate_array_method_query(method_name: str) -> str:
+    """配列メソッド呼び出し専用クエリ（forEach, push, concat等）"""
+    
+    return f"""/**
+ * @name Array method call: {method_name}
+ * @description Detects {method_name} method calls on arrays that may have performance implications
+ * @kind problem
+ * @problem.severity warning
+ * @id js/performance/array-method-{method_name.lower()}
+ * @tags performance
+ *       arrays
+ */
+
+import javascript
+
+from CallExpr callExpr
+where
+  callExpr.getCallee() instanceof PropAccess and
+  callExpr.getCallee().(PropAccess).getPropertyName() = "{method_name}" and
+  (
+    callExpr.getCallee().(PropAccess).getBase().getType() instanceof ArrayType or
+    callExpr.getCallee().(PropAccess).getBase().(VarAccess).getVariable().getAnAssignedExpr() instanceof ArrayExpr
+  )
+select callExpr, "Array method {method_name} call detected - consider performance implications."
 """
 
 # 追加：より堅牢なループ検出のための代替バージョン
