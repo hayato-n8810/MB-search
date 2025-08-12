@@ -128,10 +128,18 @@ def create_pattern_from_diff(id: int, slow_code: str, fast_code: str) -> dict | 
     return pattern
 
 def _analyze_context(ast_root: dict, path_to_diff: list) -> list:
-    """差分ノードのコンテキストを分析してCodeQLクエリ用の条件を生成"""
+    """差分ノードのコンテキストを分析してCodeQLクエリ用の条件を生成
+
+    Args:
+        ast_root (dict): ASTのルートノード
+        path_to_diff (list): 差分ノードへのパス
+
+    Returns:
+        list: CodeQLクエリ用の条件リスト
+    """
     conditions = []
     
-    # ループ内かどうかの判定（改良版）
+    # ループ内かどうかの判定
     if ast_analyzer._is_in_loop_recursive(ast_root, path_to_diff):
         conditions.append({
             "type": "in_loop",
@@ -155,7 +163,15 @@ def _analyze_context(ast_root: dict, path_to_diff: list) -> list:
     return conditions
 
 def _is_in_function(ast_root: dict, path: list) -> bool:
-    """指定されたパスが関数内にあるかチェック"""
+    """指定されたパスが関数内かチェック
+
+    Args:
+        ast_root (dict): ASTのルートノード
+        path (list): ノードのパス
+
+    Returns:
+        bool: 関数内にある場合はTrue、それ以外はFalse
+    """
     current_node = ast_root
     for i in range(len(path)):
         parent_path = path[:i+1]
@@ -170,7 +186,15 @@ def _is_in_function(ast_root: dict, path: list) -> bool:
     return False
 
 def _is_in_conditional(ast_root: dict, path: list) -> bool:
-    """指定されたパスが条件分岐内にあるかチェック"""
+    """指定されたパスが条件分岐内かチェック
+
+    Args:
+        ast_root (dict): ASTのルートノード
+        path (list): ノードのパス
+
+    Returns:
+        bool: 条件分岐内にある場合はTrue、それ以外はFalse
+    """
     current_node = ast_root
     for i in range(len(path)):
         parent_path = path[:i+1]

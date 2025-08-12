@@ -8,7 +8,15 @@ from functools import reduce
 from mb_search import path_const
 
 def generate_ast(code_snippet: str, filename="temp_code.js") -> dict:
-    """与えられたコードスニペットからAST(JSON)を生成する"""
+    """与えられたコードスニペットからAST(JSON)を生成する"
+
+    Args:
+        code_snippet (str): コードスニペット
+        filename (str, optional): 一時ファイル名. Defaults to "temp_code.js".
+
+    Returns:
+        dict: 生成されたAST
+    """
     with open(filename, "w", encoding="utf-8") as f:
         f.write(code_snippet)
     
@@ -34,7 +42,15 @@ def generate_ast(code_snippet: str, filename="temp_code.js") -> dict:
     return json.loads(result.stdout)
 
 def find_structural_difference(node1: dict, node2: dict) -> tuple[dict | None, list]:
-    """2つのASTノードを再帰的に比較し、構造的な差分を見つける"""
+    """2つのASTノードを再帰的に比較し、構造的な差分を見つける
+
+    Args:
+        node1 (dict): 比較対象のASTノード1
+        node2 (dict): 比較対象のASTノード2
+
+    Returns:
+        tuple[dict | None, list]: 構造的な差分を含むタプル
+    """
     if not isinstance(node1, dict) or not isinstance(node2, dict):
         return None, []
         
@@ -81,7 +97,15 @@ def find_structural_difference(node1: dict, node2: dict) -> tuple[dict | None, l
     return None, []
 
 def _is_in_loop_recursive(ast_root: dict, path: list) -> bool:
-    """指定されたパスの祖先にループ構造があるか再帰的に判定する（改良版）"""
+    """指定されたパスの祖先にループ構造があるか再帰的に判定する
+
+    Args:
+        ast_root (dict): ASTのルートノード
+        path (list): ノードのパス
+
+    Returns:
+        bool: ループ構造が存在する場合はTrue、それ以外はFalse
+    """
     if not path:
         return False
     
@@ -108,7 +132,15 @@ def _is_in_loop_recursive(ast_root: dict, path: list) -> bool:
     return False
 
 def _get_property_by_path(node: dict, path: list):
-    """ASTノードからパスでプロパティを取得するヘルパー関数"""
+    """ASTノードからパスでプロパティを取得するヘルパー関数
+
+    Args:
+        node (dict): ASTノード
+        path (list): プロパティのパス
+
+    Returns:
+        _type_: 指定されたパスのプロパティ値
+    """
     try:
         return reduce(lambda d, k: d[k], path, node)
     except (KeyError, TypeError, IndexError):

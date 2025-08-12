@@ -1,5 +1,4 @@
 # pattern_creator.pyで作成したパターンから CodeQLクエリを生成するモジュール
-
 # CodeQL JavaScript/TypeScript AST クラスに基づいたクエリ生成
 
 # CodeQLのAST クラスマッピング（公式ドキュメント準拠）
@@ -22,7 +21,15 @@ NODE_TYPE_TO_QL_CLASS = {
 }
 
 def _translate_conditions_to_where_clauses(pattern_conditions: list, ql_variable: str) -> str:
-    """パターン条件をCodeQLのwhere句に変換"""
+    """パターン条件をCodeQLのwhere句に変換
+
+    Args:
+        pattern_conditions (list): パターン条件のリスト
+        ql_variable (str): codeql変数名
+
+    Returns:
+        str: クエリのwhere句
+    """
     where_clauses = []
     
     for cond in pattern_conditions:
@@ -85,7 +92,14 @@ def _translate_conditions_to_where_clauses(pattern_conditions: list, ql_variable
     return " and\n  ".join(where_clauses)
 
 def generate_query_from_pattern(pattern: dict) -> str | None:
-    """パターンからCodeQLクエリを生成"""
+    """パターンからCodeQLクエリを生成
+
+    Args:
+        pattern (dict): パターンの定義
+
+    Returns:
+        str | None: 生成されたCodeQLクエリ
+    """
     if not pattern:
         return None
 
@@ -137,7 +151,13 @@ select {ql_variable}, "{description}"
     return template
 
 def _generate_method_call_specific_query(pattern: dict) -> str:
-    """メソッド呼び出し専用のクエリ生成（CallExpr使用）"""
+    """メソッド呼び出し専用のクエリ生成（CallExpr使用）
+
+    Args:
+        pattern (dict): メソッド呼び出しパターンの定義
+    Returns:
+        str: 生成されたCodeQLクエリ
+    """
     pattern_name = pattern.get("name", "MethodCallPattern")
     description = pattern.get("description", "Method call pattern detected.")
     conditions = pattern.get("conditions", [])
@@ -193,7 +213,14 @@ select callExpr, "{description}"
     return template
 
 def generate_method_call_query(method_name: str, object_type: str = None) -> str:
-    """メソッド呼び出しパターン専用クエリ"""
+    """メソッド呼び出しパターン専用クエリ
+    Args:
+        method_name (str): 対象のメソッド名
+        object_type (str, optional): オブジェクトの型（例: "Array"）
+
+    Returns:
+        str: 生成されたCodeQLクエリ
+    """
     
     object_condition = ""
     if object_type:
@@ -220,7 +247,13 @@ select callExpr, "Method call to {method_name} detected."
 
 # 配列メソッド専用クエリ生成
 def generate_array_method_query(method_name: str) -> str:
-    """配列メソッド呼び出し専用クエリ（forEach, push, concat等）"""
+    """配列メソッド呼び出し専用クエリ（forEach, push, concat等）
+
+    Args:
+        method_name (str): 対象の配列メソッド名
+    Returns:
+        str: 生成されたCodeQLクエリ
+    """
     
     return f"""/**
  * @name Array method call: {method_name}
