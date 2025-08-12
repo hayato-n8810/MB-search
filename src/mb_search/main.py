@@ -76,15 +76,15 @@ def generate_query():
     
     for pattern in existing_patterns:
         # パターンからクエリを生成
-        print(f"--> クエリ生成中: {pattern['name']}")
+        print(f"--> クエリ生成中: {pattern["name"]}")
         codeql_query = query_generator.generate_query_from_pattern(pattern)
 
         if codeql_query is None:
-            print(f"--> クエリ生成に失敗しました: {pattern['name']}")
+            print(f"--> クエリ生成に失敗しました: {pattern["name"]}")
             continue
-        print(f"--> クエリ生成成功: {pattern['name']}")
+        print(f"--> クエリ生成成功: {pattern["name"]}")
         # 生成されたクエリをファイルに保存
-        save_query_to_file(codeql_query, pattern['name'])
+        save_query_to_file(codeql_query, pattern["name"])
     
     print("\n--> 全てのパターンからのクエリ生成が完了しました。")
 

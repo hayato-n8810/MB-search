@@ -21,108 +21,108 @@ def create_pattern_from_diff(id: int, slow_code: str, fast_code: str) -> dict | 
         return None
 
     # AssignmentExpressionの場合、右辺のCallExpressionを検出対象にする
-    if diff_node.get('type') == 'AssignmentExpression' and 'right' in diff_node:
-        right_expr = diff_node['right']
-        if right_expr.get('type') == 'CallExpression':
+    if diff_node.get("type") == "AssignmentExpression" and "right" in diff_node:
+        right_expr = diff_node["right"]
+        if right_expr.get("type") == "CallExpression":
             diff_node = right_expr
-            path_to_diff.append('right')
+            path_to_diff.append("right")
 
     pattern = {
         "name": "GeneratedPattern",
         "description": "Automatically generated pattern from code diff.",
-        "target_node_type": diff_node['type'],
+        "target_node_type": diff_node["type"],
         "conditions": []
     }
     
     # CodeQLのAST構造に合わせた条件生成
-    node_type = diff_node['type']
+    node_type = diff_node["type"]
 
-    if node_type == 'ExpressionStatement' and 'expression' in diff_node:
+    if node_type == "ExpressionStatement" and "expression" in diff_node:
         # ラッパーノードの場合は、中の式を解析対象にする
-        diff_node = diff_node['expression']
-        path_to_diff.append('expression')
-        node_type = diff_node['type']
-        pattern['target_node_type'] = node_type
+        diff_node = diff_node["expression"]
+        path_to_diff.append("expression")
+        node_type = diff_node["type"]
+        pattern["target_node_type"] = node_type
     
-    if node_type == 'NewExpression':
+    if node_type == "NewExpression":
         # NewExpr クラスに対応
-        callee_name = ast_analyzer._get_property_by_path(diff_node, ['callee', 'name'])
+        callee_name = ast_analyzer._get_property_by_path(diff_node, ["callee", "name"])
         if callee_name:
-            pattern['conditions'].append({
+            pattern["conditions"].append({
                 "type": "constructor_call",
                 "constructor_name": callee_name,
                 "path": ["callee", "name"]
             })
-            pattern['name'] = f"pattern_{id}_{callee_name}_constructor"
+            pattern["name"] = f"pattern_{id}_{callee_name}_constructor"
 
-    elif node_type == 'CallExpression':
+    elif node_type == "CallExpression":
         # CallExpr クラスに対応
         # メソッド呼び出しの場合（variable.method()）
-        if diff_node.get('callee', {}).get('type') == 'MemberExpression':
-            method_name = ast_analyzer._get_property_by_path(diff_node, ['callee', 'property', 'name'])
-            object_name = ast_analyzer._get_property_by_path(diff_node, ['callee', 'object', 'name'])
+        if diff_node.get("callee", {}).get("type") == "MemberExpression":
+            method_name = ast_analyzer._get_property_by_path(diff_node, ["callee", "property", "name"])
+            object_name = ast_analyzer._get_property_by_path(diff_node, ["callee", "object", "name"])
             
             if method_name:
-                pattern['conditions'].append({
+                pattern["conditions"].append({
                     "type": "method_call",
                     "method_name": method_name,
                     "object_name": object_name,
                     "path": ["callee", "property", "name"]
                 })
-                pattern['name'] = f"pattern_{id}_{method_name}_method"
+                pattern["name"] = f"pattern_{id}_{method_name}_method"
                 
                 # 配列メソッドの特別な説明を追加
-                if method_name in ['forEach', 'push', 'concat', 'splice', 'slice', 'map', 'filter', 'reduce']:
-                    pattern['description'] = f"Detects {method_name} method calls that may have performance implications for arrays."
+                if method_name in ["forEach", "push", "concat", "splice", "slice", "map", "filter", "reduce"]:
+                    pattern["description"] = f"Detects {method_name} method calls that may have performance implications for arrays."
                 else:
-                    pattern['description'] = f"Detects {method_name} method calls that may have performance implications."
+                    pattern["description"] = f"Detects {method_name} method calls that may have performance implications."
         
         # 関数呼び出しの場合
         else:
-            function_name = ast_analyzer._get_property_by_path(diff_node, ['callee', 'name'])
+            function_name = ast_analyzer._get_property_by_path(diff_node, ["callee", "name"])
             if function_name:
-                pattern['conditions'].append({
+                pattern["conditions"].append({
                     "type": "function_call",
                     "function_name": function_name,
                     "path": ["callee", "name"]
                 })
-                pattern['name'] = f"pattern_{id}_{function_name}_function"
+                pattern["name"] = f"pattern_{id}_{function_name}_function"
 
-    elif node_type == 'Literal':
+    elif node_type == "Literal":
         # Literal クラスに対応
-        value = diff_node.get('value')
-        raw = diff_node.get('raw')
+        value = diff_node.get("value")
+        raw = diff_node.get("raw")
         if value is not None:
-            pattern['conditions'].append({
+            pattern["conditions"].append({
                 "type": "literal_value",
                 "value": value,
                 "raw": raw,
                 "value_type": type(value).__name__
             })
-            pattern['name'] = f"pattern_{id}_literal_{type(value).__name__}"
+            pattern["name"] = f"pattern_{id}_literal_{type(value).__name__}"
 
-    elif node_type == 'Identifier':
+    elif node_type == "Identifier":
         # Identifier クラスに対応
-        name = diff_node.get('name')
+        name = diff_node.get("name")
         if name:
-            pattern['conditions'].append({
+            pattern["conditions"].append({
                 "type": "identifier_name",
                 "name": name
             })
-            pattern['name'] = f"pattern_{id}_{name}_identifier"
+            pattern["name"] = f"pattern_{id}_{name}_identifier"
     
     # コンテキスト条件の追加（改良版）
     context_conditions = _analyze_context(slow_ast, path_to_diff)
-    pattern['conditions'].extend(context_conditions)
+    pattern["conditions"].extend(context_conditions)
     
     # 条件に基づいてパターン名を調整
     for context in context_conditions:
-        if context['type'] == 'in_loop':
-            pattern['name'] += "_in_loop"
-        elif context['type'] == 'in_function':
-            pattern['name'] += "_in_function"
+        if context["type"] == "in_loop":
+            pattern["name"] += "_in_loop"
+        elif context["type"] == "in_function":
+            pattern["name"] += "_in_function"
 
-    if len(pattern['conditions']) == 0:
+    if len(pattern["conditions"]) == 0:
         return None
 
     return pattern
@@ -162,8 +162,8 @@ def _is_in_function(ast_root: dict, path: list) -> bool:
         try:
             parent_node = ast_analyzer._get_property_by_path(ast_root, parent_path[:-1]) if len(parent_path) > 1 else ast_root
             if isinstance(parent_node, dict):
-                node_type = parent_node.get('type')
-                if node_type in ['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression']:
+                node_type = parent_node.get("type")
+                if node_type in ["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression"]:
                     return True
         except (KeyError, TypeError, IndexError):
             continue
@@ -177,8 +177,8 @@ def _is_in_conditional(ast_root: dict, path: list) -> bool:
         try:
             parent_node = ast_analyzer._get_property_by_path(ast_root, parent_path[:-1]) if len(parent_path) > 1 else ast_root
             if isinstance(parent_node, dict):
-                node_type = parent_node.get('type')
-                if node_type in ['IfStatement', 'ConditionalExpression', 'SwitchStatement']:
+                node_type = parent_node.get("type")
+                if node_type in ["IfStatement", "ConditionalExpression", "SwitchStatement"]:
                     return True
         except (KeyError, TypeError, IndexError):
             continue

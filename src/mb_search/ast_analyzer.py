@@ -38,12 +38,12 @@ def find_structural_difference(node1: dict, node2: dict) -> tuple[dict | None, l
     if not isinstance(node1, dict) or not isinstance(node2, dict):
         return None, []
         
-    if node1.get('type') != node2.get('type'):
+    if node1.get("type") != node2.get("type"):
         return node1, []
 
-    # 'loc'キーを除いたすべてのキーを比較対象とする
+    # "loc"キーを除いたすべてのキーを比較対象とする
     keys = set(node1.keys()) | set(node2.keys())
-    keys.discard('loc')
+    keys.discard("loc")
 
     for key in sorted(list(keys)): # 順序を固定して再現性を担保
         
@@ -92,14 +92,14 @@ def _is_in_loop_recursive(ast_root: dict, path: list) -> bool:
             # ルートから指定されたパスのノードを取得
             current_node = _get_property_by_path(ast_root, parent_path)
             if isinstance(current_node, dict):
-                node_type = current_node.get('type')
+                node_type = current_node.get("type")
                 # JavaScriptのループ構造を全て含める
                 if node_type in [
-                    'ForStatement',           # for (;;) {}
-                    'WhileStatement',         # while () {}
-                    'DoWhileStatement',       # do {} while ()
-                    'ForInStatement',         # for (key in obj) {}
-                    'ForOfStatement'          # for (value of iterable) {}
+                    "ForStatement",           # for (;;) {}
+                    "WhileStatement",         # while () {}
+                    "DoWhileStatement",       # do {} while ()
+                    "ForInStatement",         # for (key in obj) {}
+                    "ForOfStatement"          # for (value of iterable) {}
                 ]:
                     return True
         except (KeyError, TypeError, IndexError):
