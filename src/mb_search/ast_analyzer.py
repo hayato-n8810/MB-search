@@ -33,8 +33,8 @@ def generate_ast(code_snippet: str, filename="temp_code.js") -> dict:
     os.remove(filename)
 
     # デバッグ：ASTをJSONとして出力
-    # os.makedirs(path_const.JSCODE / "debug" / "ast", exist_ok=True)
-    # debug_file = path_const.JSCODE / "debug" / "ast" / f"ast{uuid.uuid4()}.json"
+    # os.makedirs(path_const.SRC / "debug" / "ast", exist_ok=True)
+    # debug_file = path_const.SRC / "debug" / "ast" / f"ast{uuid.uuid4()}.json"
     # print(f"AST debug file: {debug_file}")
     # with open(debug_file, "w", encoding="utf-8") as f:
     #     json.dump(json.loads(result.stdout), f, ensure_ascii=False, indent=2)
@@ -167,8 +167,8 @@ def _get_property_by_path(node: dict, path: list):
 #         print("Structural difference found:")
 
 #         # デバッグ：ASTをJSONとして出力
-#         os.makedirs(path_const.JSCODE / "debug" / "diff", exist_ok=True)
-#         debug_file = path_const.JSCODE / "debug" / "diff" / f"diff{uuid.uuid4()}.json"
+#         os.makedirs(path_const.SRC / "debug" / "diff", exist_ok=True)
+#         debug_file = path_const.SRC / "debug" / "diff" / f"diff{uuid.uuid4()}.json"
 #         print(f"DIFF debug file: {debug_file}")
 #         with open(debug_file, "w", encoding="utf-8") as f:
 #             json.dump(diff_node, f, ensure_ascii=False, indent=2)

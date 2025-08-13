@@ -1,0 +1,59 @@
+[
+  {
+    "name": "pattern_0_String_constructor_in_loop",
+    "description": "Automatically generated pattern from code diff.",
+    "target_node_type": "NewExpression",
+    "conditions": [
+      {
+        "type": "constructor_call",
+        "constructor_name": "String",
+        "path": [
+          "callee",
+          "name"
+        ]
+      },
+      {
+        "type": "in_loop",
+        "check": "is_in_loop"
+      }
+    ]
+  },
+  {
+    "name": "pattern_0_forEach_method",
+    "description": "Detects forEach method calls that may have performance implications for arrays.",
+    "target_node_type": "CallExpression",
+    "conditions": [
+      {
+        "type": "method_call",
+        "method_name": "forEach",
+        "object_name": "VAR_1",
+        "path": [
+          "callee",
+          "property",
+          "name"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "pattern_0_concat_method_in_loop",
+    "description": "Detects concat method calls that may have performance implications for arrays.",
+    "target_node_type": "CallExpression",
+    "conditions": [
+      {
+        "type": "method_call",
+        "method_name": "concat",
+        "object_name": "VAR_1",
+        "path": [
+          "callee",
+          "property",
+          "name"
+        ]
+      },
+      {
+        "type": "in_loop",
+        "check": "is_in_loop"
+      }
+    ]
+  }
+]

@@ -1,19 +1,19 @@
 [
   {
-    "name": "UnnecessaryConstructor_StringInLoop",
+    "name": "pattern_0_String_constructor_in_loop",
     "description": "Automatically generated pattern from code diff.",
     "target_node_type": "NewExpression",
     "conditions": [
       {
-        "type": "property_equals",
+        "type": "constructor_call",
+        "constructor_name": "String",
         "path": [
           "callee",
           "name"
-        ],
-        "value": "String"
+        ]
       },
       {
-        "type": "context_check",
+        "type": "in_loop",
         "check": "is_in_loop"
       }
     ]

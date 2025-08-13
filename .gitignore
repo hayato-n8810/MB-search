@@ -6,6 +6,7 @@ dist/
 wheels/
 *.egg-info
 debug/
+mb_data/
 
 # Configuration files
 node_modules/
