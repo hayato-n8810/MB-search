@@ -1,16 +1,139 @@
 [
   {
-    "name": "pattern_0_String_constructor_in_loop",
+    "name": "pattern_1_in_function",
     "description": "Automatically generated pattern from code diff.",
-    "target_node_type": "NewExpression",
+    "target_node_type": "BinaryExpression",
     "conditions": [
       {
-        "type": "constructor_call",
-        "constructor_name": "String",
+        "type": "in_function",
+        "check": "is_in_function"
+      }
+    ]
+  },
+  {
+    "name": "pattern_2_concat_method_in_loop",
+    "description": "Detects concat method calls that may have performance implications for arrays.",
+    "target_node_type": "CallExpression",
+    "conditions": [
+      {
+        "type": "method_call",
+        "method_name": "concat",
+        "object_name": "VAR_1",
+        "path": [
+          "callee",
+          "property",
+          "name"
+        ]
+      },
+      {
+        "type": "in_loop",
+        "check": "is_in_loop"
+      }
+    ]
+  },
+  null,
+  {
+    "name": "pattern_4_VAR_1_identifier",
+    "description": "Automatically generated pattern from code diff.",
+    "target_node_type": "Identifier",
+    "conditions": [
+      {
+        "type": "identifier_name",
+        "name": "VAR_1"
+      }
+    ]
+  },
+  {
+    "name": "pattern_5_parseInt_function_in_loop",
+    "description": "Automatically generated pattern from code diff.",
+    "target_node_type": "CallExpression",
+    "conditions": [
+      {
+        "type": "function_call",
+        "function_name": "parseInt",
         "path": [
           "callee",
           "name"
         ]
+      },
+      {
+        "type": "in_loop",
+        "check": "is_in_loop"
+      }
+    ]
+  },
+  {
+    "name": "pattern_6_in_loop",
+    "description": "Automatically generated pattern from code diff.",
+    "target_node_type": "ForStatement",
+    "conditions": [
+      {
+        "type": "in_loop",
+        "check": "is_in_loop"
+      }
+    ]
+  },
+  {
+    "name": "pattern_7_join_method_in_loop",
+    "description": "Detects join method calls that may have performance implications.",
+    "target_node_type": "CallExpression",
+    "conditions": [
+      {
+        "type": "method_call",
+        "method_name": "join",
+        "object_name": null,
+        "path": [
+          "callee",
+          "property",
+          "name"
+        ]
+      },
+      {
+        "type": "in_loop",
+        "check": "is_in_loop"
+      }
+    ]
+  },
+  null,
+  {
+    "name": "pattern_9_push_method_in_loop_in_function",
+    "description": "Detects push method calls that may have performance implications for arrays.",
+    "target_node_type": "CallExpression",
+    "conditions": [
+      {
+        "type": "method_call",
+        "method_name": "push",
+        "object_name": "VAR_2",
+        "path": [
+          "callee",
+          "property",
+          "name"
+        ]
+      },
+      {
+        "type": "in_loop",
+        "check": "is_in_loop"
+      },
+      {
+        "type": "in_function",
+        "check": "is_in_function"
+      },
+      {
+        "type": "in_conditional",
+        "check": "is_in_conditional"
+      }
+    ]
+  },
+  {
+    "name": "pattern_10_literal_dict_in_loop",
+    "description": "Automatically generated pattern from code diff.",
+    "target_node_type": "Literal",
+    "conditions": [
+      {
+        "type": "literal_value",
+        "value": {},
+        "raw": "/.*{/g",
+        "value_type": "dict"
       },
       {
         "type": "in_loop",

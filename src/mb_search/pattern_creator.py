@@ -28,7 +28,7 @@ def create_pattern_from_diff(id: int, slow_code: str, fast_code: str) -> dict | 
             path_to_diff.append("right")
 
     pattern = {
-        "name": "GeneratedPattern",
+        "name": "pattern_" + str(id),
         "description": "Automatically generated pattern from code diff.",
         "target_node_type": diff_node["type"],
         "conditions": []

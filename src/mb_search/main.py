@@ -21,21 +21,22 @@ def create_pattern(id: int, slow_code: str, fast_code: str) -> dict:
     created_pattern = pattern_creator.create_pattern_from_diff(id, slow_code, fast_code)
 
     if not created_pattern:
-        print("\n--> RESULT: パターンが生成されませんでした")
+        print(f"--> RESULT: パターンが生成されませんでした(id = {id})")
         return
     
     return created_pattern
 
-def save_pattern(patterns: dict) -> None:
+def save_pattern(patterns: dict, file_name: str) -> None:
     """生成されたパターンをJSONファイルに保存する
 
     Args:
         pattern (dict): 生成されたパターンの辞書
+        file_name (str): 保存するファイル名
 
     Returns:
-        /src/pattern/MB_patterns.jsonにパターンが保存される
+        /src/pattern/{file_name}.json にパターンが保存される
     """
-    pattern_file_path = path_const.PATTERN / "MB_patterns.json"
+    pattern_file_path = path_const.PATTERN / file_name
 
     # パターンディレクトリが存在しない場合は作成
     os.makedirs(path_const.PATTERN, exist_ok=True)
@@ -47,14 +48,15 @@ def save_pattern(patterns: dict) -> None:
     print(f"--> パターンが保存されました: {pattern_file_path}")
 
 
-def create_query(pattern: dict) -> None:
+def create_query(pattern: dict, folder_name: str) -> None:
     """パターンからCodeQLクエリを生成する
 
     Args:
         pattern (dict): 生成されたパターン
+        folder_name (str): クエリ保存用のフォルダ名
 
     Returns:
-        /codeql_queries_js/MB_QL/にクエリが保存される
+        /codeql_queries_js/{folder_name}/ にクエリが保存される
     """
     # パターンからクエリを生成
     codeql_query = query_generator.generate_query_from_pattern(pattern)
@@ -67,8 +69,7 @@ def create_query(pattern: dict) -> None:
 
     # 生成されたクエリをファイルに保存
     # クエリ保存ディレクトリのパスを取得
-    codeql_dir = path_const.QUERIES / "testQL"
-    # codeql_dir = path_const.QUERIES / "MBQL"
+    codeql_dir = path_const.QUERIES / folder_name
 
     # ファイル名を生成（pattern_nameを小文字に変換し、.qlを付加）
     filename = f"{pattern['name'].lower()}.ql"
@@ -101,15 +102,15 @@ def run_pipeline(slow_code: str, fast_code: str):
 
     patterns = []
     # ステップ1: コードの差分からパターンを生成
-    patterns.append(create_pattern(000, slow_code, fast_code))
+    patterns.append(create_pattern(0, slow_code, fast_code))
 
     # ステップ2: 生成されたパターンをJSONファイルに保存
-    save_pattern(patterns)
+    save_pattern(patterns, "test_patterns.json")
 
     # ステップ3: 生成されたパターンからCodeQLクエリを自動生成し保存
     for pattern in patterns:
         if pattern:  # Noneでない場合のみ
-            create_query(pattern)
+            create_query(pattern, "testQL")
 
 
 if __name__ == "__main__":
@@ -125,28 +126,26 @@ if __name__ == "__main__":
     # run_pipeline(slow1, fast1)
 
 
-    # # マイクロベンチマークでパターン生成およびクエリ生成
-    # # MB_codes = f"{path_const.MB_DATA}/codes.json"
-    # MB_codes = f"{path_const.MB_DATA}/mb_speed_diff_sort.json"
+    # マイクロベンチマークでパターン生成およびクエリ生成
+    # MB_codes = f"{path_const.MB_DATA}/codes.json"
+    MB_codes = f"{path_const.MB_DATA}/mb_speed_diff_sort.json"
 
-    # # 何件利用するか
-    # MAX_ITEMS = 1
+    # 何件利用するか
+    MAX_ITEMS = 10
 
-    # # JSONファイル読み込み
-    # with open(MB_codes, "r", encoding="utf-8") as f:
-    #     MB_data = json.load(f)[:MAX_ITEMS]
+    # JSONファイル読み込み
+    with open(MB_codes, "r", encoding="utf-8") as f:
+        MB_data = json.load(f)[:MAX_ITEMS]
 
-    # patterns = []
-    # for id, item in enumerate(MB_data):
-    #     slow_code = item["slow"]
-    #     fast_code = item["fast"]
-    #     # コードの差分からパターンを生成
-    #     patterns.append(create_pattern(id, slow_code, fast_code))
+    patterns = []
+    for item in MB_data:
+        # コードの差分からパターンを生成
+        patterns.append(create_pattern(item["id"], item["slow"], item["fast"]))
 
-    # # ステップ2: 生成されたパターンをJSONファイルに保存
-    # save_pattern(patterns)
+    # ステップ2: 生成されたパターンをJSONファイルに保存
+    save_pattern(patterns, "MB_patterns.json")
 
-    # # ステップ3: 生成されたパターンからCodeQLクエリを自動生成し保存
-    # for pattern in patterns:
-    #     if pattern:  # Noneでない場合のみ
-    #         create_query(pattern)
+    # ステップ3: 生成されたパターンからCodeQLクエリを自動生成し保存
+    for pattern in patterns:
+        if pattern:  # Noneでない場合のみ
+            create_query(pattern, "MBQL")
