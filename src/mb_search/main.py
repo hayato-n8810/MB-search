@@ -7,44 +7,18 @@ import query_generator
 from mb_search import path_const
 
 
-def create_diff_pattern(id: int, slow_code: str, fast_code: str):
-    """コードの差分からパターンを生成する
+def create_pattern(id: int, slow_code: str, fast_code: str) -> dict:
+    """コードの差分からslowコードのパターンを生成する
 
     Args:
         slow_code (str): MBの実装（遅いコード）
         fast_code (str): MBの実装（速いコード）
 
     Returns:
-        dict: 生成されたパターン(標準出力用)
-        ./pattern/diff_pattern.json: 生成されたパターンJSONファイル
+        dict: 生成されたパターン
     """
     # コードの差分からパターンを自動生成
     created_pattern = pattern_creator.create_pattern_from_diff(id, slow_code, fast_code)
-
-    # 生成されたパターンをdiff_pattern.jsonファイルに保存
-    pattern_file_path = path_const.PATTERN / "diff_pattern.json"
-    
-    # 既存のパターンファイルがあれば読み込み、なければ空のリストで初期化
-    existing_patterns = []
-    if os.path.exists(pattern_file_path):
-        try:
-            with open(pattern_file_path, "r", encoding="utf-8") as f:
-                existing_patterns = json.load(f)
-        except (json.JSONDecodeError, FileNotFoundError):
-            existing_patterns = []
-    
-    # 新しいパターンを既存のリストに追加
-    if created_pattern:
-        existing_patterns.append(created_pattern)
-        
-        # パターンディレクトリが存在しない場合は作成
-        os.makedirs(path_const.PATTERN, exist_ok=True)
-        
-        # 更新されたパターンリストをファイルに保存
-        with open(pattern_file_path, "w", encoding="utf-8") as f:
-            json.dump(existing_patterns, f, ensure_ascii=False, indent=2)
-
-        print(f"\n--> パターンが保存されました: {pattern_file_path}\n")
 
     if not created_pattern:
         print("\n--> RESULT: パターンが生成されませんでした")
@@ -52,58 +26,52 @@ def create_diff_pattern(id: int, slow_code: str, fast_code: str):
     
     return created_pattern
 
-
-def generate_query():
-    """パターンからCodeQLクエリを生成する
-
-    Returns:
-        str: 生成されたCodeQLクエリ
-    """
-    # 既存のパターンファイルを読み込み
-    pattern_file_path = path_const.PATTERN / "diff_pattern.json"
-    existing_patterns = []
-    if os.path.exists(pattern_file_path):
-        try:
-            with open(pattern_file_path, "r", encoding="utf-8") as f:
-                existing_patterns = json.load(f)
-        except (json.JSONDecodeError, FileNotFoundError):
-            existing_patterns = []
-    
-    # パターンからCodeQLクエリを自動生成
-    if(existing_patterns == []):
-        print("--> パターンが存在しません.")
-        return
-    
-    for pattern in existing_patterns:
-        # パターンからクエリを生成
-        print(f"--> クエリ生成中: {pattern["name"]}")
-        codeql_query = query_generator.generate_query_from_pattern(pattern)
-
-        if codeql_query is None:
-            print(f"--> クエリ生成に失敗しました: {pattern["name"]}")
-            continue
-        print(f"--> クエリ生成成功: {pattern["name"]}")
-        # 生成されたクエリをファイルに保存
-        save_query_to_file(codeql_query, pattern["name"])
-    
-    print("\n--> 全てのパターンからのクエリ生成が完了しました。")
-
-
-def save_query_to_file(codeql_query: str, pattern_name: str):
-    """生成されたCodeQLクエリを.qlファイルとして保存する
+def save_pattern(patterns: dict) -> None:
+    """生成されたパターンをJSONファイルに保存する
 
     Args:
-        codeql_query (str): 生成されたCodeQLクエリ
-        pattern_name (str): パターン名
+        pattern (dict): 生成されたパターンの辞書
 
     Returns:
-        /codeql_queries_js/{pattern_name}.ql: 生成されたCodeQLクエリファイル
+        /src/pattern/MB_patterns.jsonにパターンが保存される
     """
+    pattern_file_path = path_const.PATTERN / "MB_patterns.json"
+
+    # パターンディレクトリが存在しない場合は作成
+    os.makedirs(path_const.PATTERN, exist_ok=True)
+
+    # 更新されたパターンリストをファイルに保存
+    with open(pattern_file_path, "w", encoding="utf-8") as f:
+        json.dump(patterns, f, ensure_ascii=False, indent=2)
+
+    print(f"--> パターンが保存されました: {pattern_file_path}")
+
+
+def create_query(pattern: dict) -> None:
+    """パターンからCodeQLクエリを生成する
+
+    Args:
+        pattern (dict): 生成されたパターン
+
+    Returns:
+        /codeql_queries_js/MB_QL/にクエリが保存される
+    """
+    # パターンからクエリを生成
+    codeql_query = query_generator.generate_query_from_pattern(pattern)
+
+    if codeql_query is None:
+        print(f"--> クエリ生成に失敗しました: {pattern['name']}")
+        return None
+    
+    print(f"--> クエリ生成成功: {pattern['name']}")
+
+    # 生成されたクエリをファイルに保存
     # クエリ保存ディレクトリのパスを取得
     codeql_dir = path_const.QUERIES / "testQL"
+    # codeql_dir = path_const.QUERIES / "MBQL"
 
     # ファイル名を生成（pattern_nameを小文字に変換し、.qlを付加）
-    filename = f"{pattern_name.lower()}.ql"
+    filename = f"{pattern['name'].lower()}.ql"
     filepath = os.path.join(codeql_dir, filename)
     
     # ディレクトリが存在しない場合は作成
@@ -116,10 +84,12 @@ def save_query_to_file(codeql_query: str, pattern_name: str):
     print(f"--> クエリが保存されました: {filepath}")
 
 
-
 def run_pipeline(slow_code: str, fast_code: str):
-    """
-    実装対に対して、パターン生成からクエリ生成までのパイプラインを実行する
+    """実装対に対してパターン生成からクエリ生成までのテストを行う
+
+    Args:
+        slow_code (str): 遅い実装のコード
+        fast_code (str): 速い実装のコード
     """
     print("="*50)
     print("Target Code Pair:")
@@ -129,13 +99,17 @@ def run_pipeline(slow_code: str, fast_code: str):
     print(fast_code.strip())
     print("="*50)
 
+    patterns = []
     # ステップ1: コードの差分からパターンを生成
-    create_diff_pattern(000, slow_code, fast_code)
+    patterns.append(create_pattern(000, slow_code, fast_code))
 
-    # ステップ2: 生成されたパターンからCodeQLクエリを自動生成し保存
-    generate_query()
-    
-    print("="*50)
+    # ステップ2: 生成されたパターンをJSONファイルに保存
+    save_pattern(patterns)
+
+    # ステップ3: 生成されたパターンからCodeQLクエリを自動生成し保存
+    for pattern in patterns:
+        if pattern:  # Noneでない場合のみ
+            create_query(pattern)
 
 
 if __name__ == "__main__":
@@ -148,4 +122,31 @@ if __name__ == "__main__":
     for (var i = 0; i < 100; i++) {
         var s = "hello";
     }"""
-    run_pipeline(slow1, fast1)
+    # run_pipeline(slow1, fast1)
+
+
+    # # マイクロベンチマークでパターン生成およびクエリ生成
+    # # MB_codes = f"{path_const.MB_DATA}/codes.json"
+    # MB_codes = f"{path_const.MB_DATA}/mb_speed_diff_sort.json"
+
+    # # 何件利用するか
+    # MAX_ITEMS = 1
+
+    # # JSONファイル読み込み
+    # with open(MB_codes, "r", encoding="utf-8") as f:
+    #     MB_data = json.load(f)[:MAX_ITEMS]
+
+    # patterns = []
+    # for id, item in enumerate(MB_data):
+    #     slow_code = item["slow"]
+    #     fast_code = item["fast"]
+    #     # コードの差分からパターンを生成
+    #     patterns.append(create_pattern(id, slow_code, fast_code))
+
+    # # ステップ2: 生成されたパターンをJSONファイルに保存
+    # save_pattern(patterns)
+
+    # # ステップ3: 生成されたパターンからCodeQLクエリを自動生成し保存
+    # for pattern in patterns:
+    #     if pattern:  # Noneでない場合のみ
+    #         create_query(pattern)
