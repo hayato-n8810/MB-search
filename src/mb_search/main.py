@@ -115,23 +115,24 @@ def run_pipeline(slow_code: str, fast_code: str):
 
 if __name__ == "__main__":
     # --- テストケース：ループ内での不要なコンストラクタ呼び出し ---
-    slow1 = """
+    slow = """
     for (var i = 0; i < 100; i++) {
         var s = new String("hello");
     }"""
-    fast1 = """
+    fast = """
     for (var i = 0; i < 100; i++) {
         var s = "hello";
     }"""
-    # run_pipeline(slow1, fast1)
+    # run_pipeline(slow, fast)
 
 
     # マイクロベンチマークでパターン生成およびクエリ生成
     # MB_codes = f"{path_const.MB_DATA}/codes.json"
-    MB_codes = f"{path_const.MB_DATA}/mb_speed_diff_sort.json"
+    # MB_codes = f"{path_const.MB_DATA}/mb_speed_diff_sort.json"
+    MB_codes = f"{path_const.MB_DATA}/selection.json"
 
-    # 何件利用するか
-    MAX_ITEMS = 10
+    # 何件利用するか(全ての場合はNone)
+    MAX_ITEMS = None
 
     # JSONファイル読み込み
     with open(MB_codes, "r", encoding="utf-8") as f:
