@@ -21,18 +21,17 @@ MB-search/
 ├── src/
 │   ├── mb_search/           # メインのPythonモジュール
 │   │   ├── main.py          # パイプライン実行
+│   │   ├── ast_analyzer.py  # AST解析
 │   │   ├── pattern_creator.py  # パターン生成
-│   │   ├── query_generator.py  # CodeQLクエリ生成
-│   │   └── ast_analyzer.py  # AST解析
+│   │   └── query_generator.py  # CodeQLクエリ生成
 │   ├── pattern/             # 生成されたパターン定義
-│   │   └── diff_pattern.json
 │   └── const/               # 定数定義
 │       └── path_const.py
 ├── js_code/                 # JavaScript関連ファイル
 │   └── ast_parser.js        # ASTパーサー
-├── codeql_queries_js/       # 生成されたCodeQLクエリ
-│   └── testQL/              # テスト用クエリ
-└── package.json             # Node.js依存関係
+└── codeql_queries_js/       # 生成されたCodeQLクエリ
+    ├── MBQL/                # マイクロベンチマークから作成されたクエリ
+    └── testQL/              # テスト用クエリ
 ```
 
 ## インストール
