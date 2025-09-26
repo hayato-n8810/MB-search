@@ -13,3 +13,7 @@ node_modules/
 
 # Virtual environments
 .venv
+
+# created patterns & queries
+MB_patterns.json
+MBQL/
