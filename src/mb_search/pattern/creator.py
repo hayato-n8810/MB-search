@@ -1,5 +1,5 @@
 # MBのAST差分からアンチパターンの検出ルールをヒューリスティックで作成する
-from mb_search.ast import ast_analyzer
+from mb_search.ast import analyzer
 
 def create_pattern_from_diff(id: int, slow_code: str, fast_code: str) -> dict | None:
     """実装対の差分から、アンチパターンの定義を自動生成する
@@ -12,10 +12,10 @@ def create_pattern_from_diff(id: int, slow_code: str, fast_code: str) -> dict | 
     Returns:
         dict | None: 生成されたパターン（差分がない場合はNone）
     """
-    slow_ast = ast_analyzer.generate_ast(slow_code, "slow_temp.js")
-    fast_ast = ast_analyzer.generate_ast(fast_code, "fast_temp.js")
+    slow_ast = analyzer.generate_ast(slow_code, "slow_temp.js")
+    fast_ast = analyzer.generate_ast(fast_code, "fast_temp.js")
 
-    diff_node, path_to_diff = ast_analyzer.find_structural_difference(slow_ast, fast_ast)
+    diff_node, path_to_diff = analyzer.find_structural_difference(slow_ast, fast_ast)
 
     if not diff_node:
         return None
@@ -46,7 +46,7 @@ def create_pattern_from_diff(id: int, slow_code: str, fast_code: str) -> dict | 
     
     if node_type == "NewExpression":
         # NewExpr クラスに対応
-        callee_name = ast_analyzer._get_property_by_path(diff_node, ["callee", "name"])
+        callee_name = analyzer._get_property_by_path(diff_node, ["callee", "name"])
         if callee_name:
             pattern["conditions"].append({
                 "type": "constructor_call",
@@ -59,8 +59,8 @@ def create_pattern_from_diff(id: int, slow_code: str, fast_code: str) -> dict | 
         # CallExpr クラスに対応
         # メソッド呼び出しの場合（variable.method()）
         if diff_node.get("callee", {}).get("type") == "MemberExpression":
-            method_name = ast_analyzer._get_property_by_path(diff_node, ["callee", "property", "name"])
-            object_name = ast_analyzer._get_property_by_path(diff_node, ["callee", "object", "name"])
+            method_name = analyzer._get_property_by_path(diff_node, ["callee", "property", "name"])
+            object_name = analyzer._get_property_by_path(diff_node, ["callee", "object", "name"])
             
             if method_name:
                 pattern["conditions"].append({
@@ -79,7 +79,7 @@ def create_pattern_from_diff(id: int, slow_code: str, fast_code: str) -> dict | 
         
         # 関数呼び出しの場合
         else:
-            function_name = ast_analyzer._get_property_by_path(diff_node, ["callee", "name"])
+            function_name = analyzer._get_property_by_path(diff_node, ["callee", "name"])
             if function_name:
                 pattern["conditions"].append({
                     "type": "function_call",
@@ -140,7 +140,7 @@ def _analyze_context(ast_root: dict, path_to_diff: list) -> list:
     conditions = []
     
     # ループ内かどうかの判定
-    if ast_analyzer._is_in_loop_recursive(ast_root, path_to_diff):
+    if analyzer._is_in_loop_recursive(ast_root, path_to_diff):
         conditions.append({
             "type": "in_loop",
             "check": "is_in_loop"
@@ -176,7 +176,7 @@ def _is_in_function(ast_root: dict, path: list) -> bool:
     for i in range(len(path)):
         parent_path = path[:i+1]
         try:
-            parent_node = ast_analyzer._get_property_by_path(ast_root, parent_path[:-1]) if len(parent_path) > 1 else ast_root
+            parent_node = analyzer._get_property_by_path(ast_root, parent_path[:-1]) if len(parent_path) > 1 else ast_root
             if isinstance(parent_node, dict):
                 node_type = parent_node.get("type")
                 if node_type in ["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression"]:
@@ -199,7 +199,7 @@ def _is_in_conditional(ast_root: dict, path: list) -> bool:
     for i in range(len(path)):
         parent_path = path[:i+1]
         try:
-            parent_node = ast_analyzer._get_property_by_path(ast_root, parent_path[:-1]) if len(parent_path) > 1 else ast_root
+            parent_node = analyzer._get_property_by_path(ast_root, parent_path[:-1]) if len(parent_path) > 1 else ast_root
             if isinstance(parent_node, dict):
                 node_type = parent_node.get("type")
                 if node_type in ["IfStatement", "ConditionalExpression", "SwitchStatement"]:
