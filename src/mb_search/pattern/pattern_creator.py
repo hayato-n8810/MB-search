@@ -1,5 +1,5 @@
 # MBのAST差分からアンチパターンの検出ルールをヒューリスティックで作成する
-import ast_analyzer
+from mb_search.ast import ast_analyzer
 
 def create_pattern_from_diff(id: int, slow_code: str, fast_code: str) -> dict | None:
     """実装対の差分から、アンチパターンの定義を自動生成する

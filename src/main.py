@@ -1,8 +1,8 @@
 # 差分からパターン生成・クエリ生成を行うメインのパイプライン
 import json
 import os
-import pattern_creator
-import query_generator
+from mb_search.pattern import pattern_creator
+from mb_search.query import query_generator
 
 from mb_search import path_const
 
@@ -128,15 +128,15 @@ if __name__ == "__main__":
 
     # マイクロベンチマークでパターン生成およびクエリ生成
     # MB_codes = f"{path_const.MB_DATA}/codes.json"
-    # MB_codes = f"{path_const.MB_DATA}/mb_speed_diff_sort.json"
-    MB_codes = f"{path_const.MB_DATA}/selection.json"
+    MB_codes = f"{path_const.MB_DATA}/mb_speed_diff_sort.json"
+    # MB_codes = f"{path_const.MB_DATA}/selection.json"
 
     # 何件利用するか(全ての場合はNone)
     MAX_ITEMS = None
 
     # JSONファイル読み込み
     with open(MB_codes, "r", encoding="utf-8") as f:
-        MB_data = json.load(f)[:MAX_ITEMS]
+        MB_data = json.load(f)[:300]
 
     patterns = []
     for item in MB_data:
